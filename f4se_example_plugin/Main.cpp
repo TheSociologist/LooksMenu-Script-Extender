@@ -17,7 +17,16 @@
 #include <shlobj.h>
 
 static F4SEPapyrusInterface* g_papyrus = NULL;
-F4SETaskInterface* g_task = nullptr;
+static F4SETaskInterface* g_task = nullptr;
+
+struct FaceGenData : BSIntrusiveRefCounted
+{
+	NiPointer<BSTextureArray::StaticTextureIndexed> texturesA; // 08
+	void* hairLookupTexture; // 28
+	uint32_t layerCount; // 30
+	uint32_t LRU[(0x234 - 0x34) >> 3]; // 34
+	uint32_t stamp; // 234
+};
 
 class F4EESkinUpdate : public ITaskDelegate
 {
@@ -49,6 +58,11 @@ void F4EESkinUpdate::Run()
 	if (!npc)
 		return;
 
+	_MESSAGE("Refreshing head");
+	npc->MarkChanged(0x800);
+	CharacterCreation* characterCreation = g_characterCreation[*g_characterIndex];
+	characterCreation->unk517 = 1;
+	characterCreation->dirty = 1;
 	CALL_MEMBER_FN(actor, QueueUpdate)(false, 0, true, 0);
 	_MESSAGE("Refreshed head");
 }
@@ -142,14 +156,7 @@ namespace LMSE {
 	}
 
 	void Update(StaticFunctionTag*, Actor* actor) {
-		_MESSAGE("Updating the actor");
-
-		TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-		if (actor == (*g_player)) {
-			CopyCharacterTints((*g_player)->tints, npc->tints);
-		}
-
-		_MESSAGE("Finished updating the actor");
+		g_task->AddTask(new F4EESkinUpdate(actor));
 	}
 
 	void Add(StaticFunctionTag*, Actor* actor, TintMask mask)
@@ -176,11 +183,9 @@ namespace LMSE {
 		BGSCharacterTint::Template::Entry* templateEntry = chargenData->GetTemplateByIndex(id);
 
 		if (templateEntry) {
-			_MESSAGE("Found template entry");
 			BGSCharacterTint::Entry* newEntry = CreateCharacterTintEntry((id << 16) | type);
 			
 			if (newEntry) {
-				_MESSAGE("Created new entry");
 				if (newEntry->GetType() == BGSCharacterTint::Entry::kTypePalette) {
 					BGSCharacterTint::PaletteEntry* palette = static_cast<BGSCharacterTint::PaletteEntry*>(newEntry);
 					BGSCharacterTint::Template::Palette* paletteTemplate = static_cast<BGSCharacterTint::Template::Palette*>(templateEntry);
@@ -199,25 +204,11 @@ namespace LMSE {
 
 				
 				if (actor == (*g_player)) {
-					_MESSAGE("Copying character tints");
 					CopyCharacterTints((*g_player)->tints, npc->tints);
 				}
 
-				npc->MarkChanged(0x800); // Save FaceData
-				npc->MarkChanged(0x4000); // Save weights
-
-				g_task->AddTask(new F4EESkinUpdate(actor));
-				_MESSAGE("Finished adding overlay with id");
-			}
-			else {
-				_MESSAGE("Entry couldn't be created");
 			}
 		}
-		else {
-			_MESSAGE("No overlay template found");
-		}
-
-		
 	}
 
 	void Set(StaticFunctionTag*, Actor* actor, TintMask mask) {

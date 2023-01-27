@@ -48,22 +48,9 @@ Temporary Items
 
 cmake/
 
-common/
-f4se/
-f4se_common/
-f4se_loader/
-f4se_loader_common/
-f4se_steam_loader/
+
 installer/
-lib/
-scripts/
 x64/
 x64_vc11/
-xbyak/
 
 .vs
-
-CMakeLists.txt
-f4se_plugin.sln
-f4se_plugin.sln
-CustomControlMap.txt
